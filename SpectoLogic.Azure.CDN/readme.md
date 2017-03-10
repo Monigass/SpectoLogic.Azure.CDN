@@ -81,10 +81,10 @@ Add this on the top of the cshtml-File:<br/>
 @inject IMediaUrlProvider CDNMedia</code>
 <br/>
 And within the cshtml-File use this to create a CDN-Image f.e.:<br/>
-<code><img src="@(CDNMedia.Url("/images/sandcastle.png"))" /></code>
+<code>&lt;img src="@(CDNMedia.Url("/images/sandcastle.png"))" /&gt;</code>
 <br/>
 or use a named policy:<br/>
-<code><img src="@(CDNMedia.Url("/images/sandcastle.png","myPolicy"))" /></code>
+<code>&lt;img src="@(CDNMedia.Url("/images/sandcastle.png","myPolicy"))" /&gt;</code>
 <br/>
 
 #### Inside a Controller
