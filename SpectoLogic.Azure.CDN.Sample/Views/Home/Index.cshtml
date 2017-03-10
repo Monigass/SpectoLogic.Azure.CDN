@@ -1,0 +1,11 @@
+﻿@using SpectoLogic.Azure.CDN;
+@inject IMediaUrlProvider CDNMedia
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+Sample page to load a simple asset like an image!
+
+<img src="@(CDNMedia.Url("/images/polarbear.png",null))" />
+
+
