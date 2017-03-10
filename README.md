@@ -1,4 +1,7 @@
 # SpectoLogic.Azure.CDN
-This .NET Standard Libray is thought to be used with an ASP.NET Core application. The library helps to create tokenized links to your content cached in Azure Verizons CDN servers.
+This libray makes it easy to create links to protected Azure Verizon CDN content.
+This is achieved by creating encrypted tokens.
 
-<a href="https://github.com/SpectoLogic/SpectoLogic.Azure.CDN/blob/master/SpectoLogic.Azure.CDN/readme.md">Documentation,...</a>
+This library supports .NET Standard 1.4 and can be used with an ASP.NET Core application.
+
+<a href="https://github.com/SpectoLogic/SpectoLogic.Azure.CDN/blob/master/SpectoLogic.Azure.CDN/readme.md">Read more (including Documentation)...</a>

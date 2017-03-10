@@ -7,6 +7,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpectoLogic.Azure.CDN", "Sp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpectoLogic.Azure.CDN.Sample", "SpectoLogic.Azure.CDN.Sample\SpectoLogic.Azure.CDN.Sample.csproj", "{E73775A0-F754-44A3-9CF7-78DDD720FA8D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1BACFADA-0563-46C4-8272-0783AB4F6805}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
