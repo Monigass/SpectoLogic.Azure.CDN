@@ -1,63 +1,65 @@
 ﻿/**
-* Copyright (C) 2016 Verizon. All Rights Reserved.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (C) 2019 Monigass
+ * 
+ * Copyright (C) 2016 Verizon. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+using System;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 
-
-namespace SpectoLogic.Azure.CDN.Security
+namespace VerizonDigital.CDN.TokenProvider.Security
 {
     /// <summary>
     /// Copyright (C) 2016 Verizon
     /// </summary>
-    class TokenBuilder
+    public class TokenBuilder
     {
         private static readonly SecureRandom Random = new SecureRandom();
         private readonly Random _rand = new Random((int)DateTime.Now.Ticks);
         private readonly int MIN_RANDOM_LENGTH = 4;
         private readonly int MAX_RANDOM_LENGTH = 8;
         private readonly char[] PADDING = { '=' };
-        //Preconfigured Encryption Parameters
+
+        // Preconfigured Encryption Parameters
         public readonly int NonceBitSize = 96;
         public readonly int MacBitSize = 128;
         public readonly int KeyBitSize = 256;
 
-        private string NextRandomString(int length)
+        public string NextRandomString(int length)
         {
-            var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             var stringChars = new char[length];
 
-            for (int i = 0; i < stringChars.Length; i++)
+            for (var i = 0; i < stringChars.Length; i++)
             {
-                stringChars[i] = chars[_rand.Next(chars.Length)];
+                stringChars[i] = Chars[_rand.Next(Chars.Length)];
             }
 
-            string randomString = new String(stringChars);
-            return randomString;
+            return new string(stringChars);
         }
 
         public string NextRandomString()
         {
-            int length = _rand.Next(MIN_RANDOM_LENGTH, MAX_RANDOM_LENGTH);
+            var length = _rand.Next(MIN_RANDOM_LENGTH, MAX_RANDOM_LENGTH);
+
             return NextRandomString(length);
         }
 
@@ -88,10 +90,14 @@ namespace SpectoLogic.Azure.CDN.Security
             string deniedProtocol = null,
             string allowedUrls = null)
         {
-            DateTime expTime = DateTime.UtcNow + expirationTimeSpan;
-            return EncryptV3(key, expTime, clientIPAddress, allowedCountries, deniedCountries, allowedReferrers, deniedReferrers,
-                allowedProtocol, deniedProtocol);
+            var expTime = DateTime.UtcNow + expirationTimeSpan;
+
+            return EncryptV3(key, expTime, clientIPAddress,
+                allowedCountries, deniedCountries, allowedReferrers,
+                deniedReferrers, allowedProtocol,
+                deniedProtocol, allowedUrls);
         }
+
         /// <summary>
         /// This helper methods allows to create expiring CDN encryption tokens
         /// https://docs.microsoft.com/en-us/azure/cdn/cdn-token-auth
@@ -119,59 +125,88 @@ namespace SpectoLogic.Azure.CDN.Security
         string deniedProtocol = null,
         string allowedUrls = null)
         {
-            StringBuilder token = new StringBuilder();
+            var token = new StringBuilder();
+
             /// ec_expire=1185943200&ec_clientip=111.11.111.11&ec_country_allow=US&ec_ref_allow=ec1.com"
             /// php -d extension=.libs/ectoken.so example.php
             /// php -d extension=.libs/ectoken.so -r '$token = ectoken_encrypt_token("12345678", "ec_expire=1185943200&ec_clientip=111.11.111.11&ec_country_allow=US&ec_ref_allow=ec1.com"); echo $token;'
-            TimeSpan t = expirationTime - new DateTime(1970, 1, 1);
-            int epoch = (int)t.TotalSeconds;
+            var t = expirationTime - new DateTime(1970, 1, 1);
+            var epoch = (int)t.TotalSeconds;
+
             token.Append($"ec_expire={epoch}");
-            if (!string.IsNullOrEmpty(clientIPAddress)) token.Append($"&ec_clientip={clientIPAddress}");
-            if (!string.IsNullOrEmpty(allowedCountries)) token.Append($"&ec_country_allow={allowedCountries}");
-            if (!string.IsNullOrEmpty(deniedCountries)) token.Append($"&ec-country-deny={deniedCountries}");
-            if (!string.IsNullOrEmpty(allowedReferrers)) token.Append($"&ec-ref-allow={allowedReferrers}");
-            if (!string.IsNullOrEmpty(deniedReferrers)) token.Append($"&ec-ref-deny={deniedReferrers}");
-            if (!string.IsNullOrEmpty(allowedProtocol)) token.Append($"&ec-proto-allow={allowedProtocol}");
-            if (!string.IsNullOrEmpty(deniedProtocol)) token.Append($"&ec-proto-deny={deniedProtocol}");
-            if (!string.IsNullOrEmpty(allowedUrls)) token.Append($"&ec-url-allow={allowedUrls}");
-            return EncryptV3(key, token.ToString(), false);
+
+            if (!string.IsNullOrEmpty(clientIPAddress))
+            {
+                token.Append($"&ec_clientip={clientIPAddress}");
+            }
+
+            if (!string.IsNullOrEmpty(allowedCountries))
+            {
+                token.Append($"&ec_country_allow={allowedCountries}");
+            }
+
+            if (!string.IsNullOrEmpty(deniedCountries))
+            {
+                token.Append($"&ec_country_deny={deniedCountries}");
+            }
+
+            if (!string.IsNullOrEmpty(allowedReferrers))
+            {
+                token.Append($"&ec_ref_allow={allowedReferrers}");
+            }
+
+            if (!string.IsNullOrEmpty(deniedReferrers))
+            {
+                token.Append($"&ec_ref_deny={deniedReferrers}");
+            }
+
+            if (!string.IsNullOrEmpty(allowedProtocol))
+            {
+                token.Append($"&ec_proto_allow={allowedProtocol}");
+            }
+
+            if (!string.IsNullOrEmpty(deniedProtocol))
+            {
+                token.Append($"&ec_proto_deny={deniedProtocol}");
+            }
+
+            if (!string.IsNullOrEmpty(allowedUrls))
+            {
+                token.Append($"&ec_url_allow={allowedUrls}");
+            }
+
+            return EncryptV3(key, token.ToString());
         }
 
         #region Encrypt V3-AESGCM
-        public string EncryptV3(String strKey, String strToken, bool blnVerbose)
+
+        public string EncryptV3(string strKey, string strToken)
         {
             if (strToken.Length > 512)
+            {
                 throw new ArgumentException("Token exceeds maximum of 512 characters.");
+            }
 
-            // make sure the user didn't pass in ec_secure=1
+            // Make sure the user didn't pass in ec_secure = 1
             // older versions of ecencrypt required users to pass this in
             // current users should not pass in ec_secure
             strToken = strToken.Replace("ec_secure=1&", "");
             strToken = strToken.Replace("ec_secure=1", "");
 
-            // if verbose is turned on, show what is about to be encrypted
-            if (blnVerbose)
-                Debug.WriteLine("Token before encryption :  " + strToken);
+            // Key to SHA256
+            var sha256 = SHA256.Create();
+            var arrKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(strKey));
 
-            //key to SHA256
-            SHA256 sha256 = SHA256.Create();
-            byte[] arrKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(strKey));
-            string encrypted = AESGCMEncrypt(strToken, arrKey, blnVerbose);
-            return encrypted;
+            return AESGCMEncrypt(strToken, arrKey);
         }
 
-        public string DecryptV3(String strKey, String strToken, bool blnVerbose)
+        public string DecryptV3(string strKey, string strToken)
         {
-            if (blnVerbose)
-                Debug.WriteLine("Token before decryption :  " + strToken);
+            // Key to SHA256
+            var sha256 = SHA256.Create();
+            var arrKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(strKey));
 
-            //key to SHA256
-            SHA256 sha256 = SHA256.Create();
-            byte[] arrKey = sha256.ComputeHash(Encoding.UTF8.GetBytes(strKey));
-            string decrypted = AESGCMDecrypt(strToken, arrKey, blnVerbose);
-            if (blnVerbose)
-                Debug.WriteLine("Token after decryption :  " + decrypted);
-            return decrypted;
+            return AESGCMDecrypt(strToken, arrKey);
         }
 
         /// <summary>
@@ -186,16 +221,17 @@ namespace SpectoLogic.Azure.CDN.Security
         /// <remarks>
         /// Adds overhead of (Optional-Payload + BlockSize(16) + Message +  HMac-Tag(16)) * 1.33 Base64
         /// </remarks>
-        private string AESGCMEncrypt(string strToken, byte[] key, bool blnVerbose)
+        private string AESGCMEncrypt(string strToken, byte[] key)
         {
             if (string.IsNullOrEmpty(strToken))
+            {
                 throw new ArgumentException("Secret Message Required!", "secretMessage");
+            }
 
-            byte[] plainText = Encoding.UTF8.GetBytes(strToken);
-            byte[] cipherText = null;
-            cipherText = AESGCMEncrypt(plainText, key, blnVerbose);
+            var plainText = Encoding.UTF8.GetBytes(strToken);
+            var cipherText = AESGCMEncrypt(plainText, key);
 
-            return base64urlencode(cipherText);
+            return Base64urlencode(cipherText);
         }
 
         /// <summary>
@@ -207,34 +243,41 @@ namespace SpectoLogic.Azure.CDN.Security
         /// <remarks>
         /// Adds overhead of (Optional-Payload + BlockSize(16) + Message +  HMac-Tag(16)) * 1.33 Base64
         /// </remarks>
-        private byte[] AESGCMEncrypt(byte[] strToken, byte[] key, bool blnVerbose)
+        private byte[] AESGCMEncrypt(byte[] strToken, byte[] key)
         {
-            //User Error Checks
+            // User Error Checks
             if (key == null || key.Length != KeyBitSize / 8)
-                throw new ArgumentException(String.Format("Key needs to be {0} bit!", KeyBitSize), "key");
+            {
+                throw new ArgumentException(string.Format("Key needs to be {0} bit!", KeyBitSize), "key");
+            }
 
-            //Using random nonce large enough not to repeat
-            byte[] iv = new byte[NonceBitSize / 8];
+            // Using random nonce large enough not to repeat
+            var iv = new byte[NonceBitSize / 8];
             Random.NextBytes(iv, 0, iv.Length);
-            var cipher = new GcmBlockCipher(new AesFastEngine());
+            var cipher = new GcmBlockCipher(new AesEngine());
+
             // var parameters = new AeadParameters(new KeyParameter(key), MacBitSize, nonce, nonSecretPayload);
-            KeyParameter keyParam = new KeyParameter(key);
+            var keyParam = new KeyParameter(key);
             ICipherParameters parameters = new ParametersWithIV(keyParam, iv);
             cipher.Init(true, parameters);
-            //Generate Cipher Text With Auth Tag           
+
+            // Generate Cipher Text With Auth Tag           
             var cipherText = new byte[cipher.GetOutputSize(strToken.Length)];
             var len = cipher.ProcessBytes(strToken, 0, strToken.Length, cipherText, 0);
-            int len2 = cipher.DoFinal(cipherText, len);
-            //Assemble Message
+            var len2 = cipher.DoFinal(cipherText, len);
+
+            // Assemble Message
             using (var combinedStream = new MemoryStream())
             {
                 using (var binaryWriter = new BinaryWriter(combinedStream))
                 {
-                    //Prepend Nonce
+                    // Prepend Nonce
                     binaryWriter.Write(iv);
-                    //Write Cipher Text
+
+                    // Write Cipher Text
                     binaryWriter.Write(cipherText);
                 }
+
                 return combinedStream.ToArray();
             }
         }
@@ -245,13 +288,16 @@ namespace SpectoLogic.Azure.CDN.Security
         /// <param name="encryptedMessage">The encrypted message.</param>
         /// <param name="key">The key.</param>        
         /// <returns>Decrypted Message</returns>
-        private string AESGCMDecrypt(string encryptedMessage, byte[] key, bool blnVerbose)
+        private string AESGCMDecrypt(string encryptedMessage, byte[] key)
         {
             if (string.IsNullOrEmpty(encryptedMessage))
+            {
                 throw new ArgumentException("Encrypted Message Required!", "encryptedMessage");
-            var cipherText = base64urldecode(encryptedMessage);
-            byte[] plaintext = null;
-            plaintext = AESGCMDecrypt(cipherText, key, blnVerbose);
+            }
+
+            var cipherText = Base64urldecode(encryptedMessage);
+            var plaintext = AESGCMDecrypt(cipherText, key);
+
             return plaintext == null ? null : Encoding.UTF8.GetString(plaintext);
         }
 
@@ -262,67 +308,92 @@ namespace SpectoLogic.Azure.CDN.Security
         /// <param name="key">The key.</param>
         /// <param name="nonSecretPayloadLength">Length of the optional non-secret payload.</param>
         /// <returns>Decrypted Message</returns>
-        private byte[] AESGCMDecrypt(byte[] encryptedMessage, byte[] key, bool blnVerbose)
+        private byte[] AESGCMDecrypt(byte[] encryptedMessage, byte[] key)
         {
-            //User Error Checks
+            // User Error Checks
             if (key == null || key.Length != KeyBitSize / 8)
-                throw new ArgumentException(String.Format("Key needs to be {0} bit!", KeyBitSize), "key");
+            {
+                throw new ArgumentException(string.Format("Key needs to be {0} bit!", KeyBitSize), "key");
+            }
 
             if (encryptedMessage == null || encryptedMessage.Length == 0)
+            {
                 throw new ArgumentException("Encrypted Message Required!", "encryptedMessage");
+            }
 
             using (var cipherStream = new MemoryStream(encryptedMessage))
-            using (var cipherReader = new BinaryReader(cipherStream))
             {
-                //Grab Nonce
-                var iv = cipherReader.ReadBytes(NonceBitSize / 8);
-
-                var cipher = new GcmBlockCipher(new AesFastEngine());
-                KeyParameter keyParam = new KeyParameter(key);
-                ICipherParameters parameters = new ParametersWithIV(keyParam, iv);
-                cipher.Init(false, parameters);
-
-                //Decrypt Cipher Text
-                var cipherText = cipherReader.ReadBytes(encryptedMessage.Length - iv.Length);
-                var plainText = new byte[cipher.GetOutputSize(cipherText.Length)];
-                try
+                using (var cipherReader = new BinaryReader(cipherStream))
                 {
-                    var len = cipher.ProcessBytes(cipherText, 0, cipherText.Length, plainText, 0);
-                    cipher.DoFinal(plainText, len);
+                    // Grab Nonce
+                    var iv = cipherReader.ReadBytes(NonceBitSize / 8);
+
+                    var cipher = new GcmBlockCipher(new AesEngine());
+
+                    var keyParam = new KeyParameter(key);
+                    ICipherParameters parameters = new ParametersWithIV(keyParam, iv);
+                    cipher.Init(false, parameters);
+
+                    // Decrypt Cipher Text
+                    var cipherText = cipherReader.ReadBytes(encryptedMessage.Length - iv.Length);
+                    var plainText = new byte[cipher.GetOutputSize(cipherText.Length)];
+
+                    try
+                    {
+                        var len = cipher.ProcessBytes(cipherText, 0, cipherText.Length, plainText, 0);
+                        cipher.DoFinal(plainText, len);
+                    }
+                    catch (InvalidCipherTextException)
+                    {
+                        return null;
+                    }
+
+                    return plainText;
                 }
-                catch (InvalidCipherTextException)
-                {
-                    return null;
-                }
-                return plainText;
             }
         }
 
-        private string base64urlencode(byte[] arg)
+        private string Base64urlencode(byte[] arg)
         {
-            string s = Convert.ToBase64String(arg); // Regular base64 encoder
+            var s = Convert.ToBase64String(arg); // Regular base64 encoder
+
             s = s.Split('=')[0]; // Remove any trailing '='s
             s = s.Replace('+', '-'); // 62nd char of encoding
             s = s.Replace('/', '_'); // 63rd char of encoding                      
+
             return s;
         }
 
-        private byte[] base64urldecode(string arg)
+        private byte[] Base64urldecode(string arg)
         {
-            string s = arg;
+            var s = arg;
             s = s.Replace('-', '+'); // 62nd char of encoding
             s = s.Replace('_', '/'); // 63rd char of encoding
+
             switch (s.Length % 4) // Pad with trailing '='s
             {
-                case 0: break; // No pad chars in this case
-                case 2: s += "=="; break; // Two pad chars
-                case 3: s += "="; break; // One pad char
+                // No pad chars in this case
+                case 0:
+                    break; 
+
+                // Two pad chars
+                case 2:
+                    s += "==";
+                    break;
+
+                // One pad char
+                case 3:
+                    s += "=";
+                    break;
+
                 default:
-                    throw new System.Exception(
-             "Illegal base64url string!");
+                    throw new Exception("Illegal base64url string!");
             }
-            return Convert.FromBase64String(s); // Standard base64 decoder
+
+            // Standard base64 decoder
+            return Convert.FromBase64String(s); 
         }
+
         #endregion
     }
 }

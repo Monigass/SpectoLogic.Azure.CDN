@@ -1,5 +1,5 @@
-﻿# SpectoLogic.Azure.CDN.Sample
-This sample shows how to use SpectoLogic.Azure.CDN Library.
+﻿# VerizonDigital.CDN.TokenProvider.Sample
+This sample shows how to use VerizonDigital.CDN.TokenProvider Library.
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
