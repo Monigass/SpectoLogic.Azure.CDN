@@ -3,12 +3,21 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>VerizonDigital.CDN.TokenGenerator</AssemblyName>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>Verizon CDN</PackageTags>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Description>This libray makes it easy to create links to protected Azure Verizon CDN content.
+This is achieved by creating encrypted tokens.</Description>
+    <PackageLicenseFile>License.txt</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="License.txt" Pack="true" PackagePath=""/>
   </ItemGroup>
 
 </Project>
