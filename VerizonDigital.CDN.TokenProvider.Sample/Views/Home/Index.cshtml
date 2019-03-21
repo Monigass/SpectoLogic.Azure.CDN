@@ -1,0 +1,13 @@
+﻿@using VerizonDigital.CDN.TokenProvider;
+@using Microsoft.Extensions.Configuration;
+@inject IConfiguration configuration
+@inject ICDNTokenProvider tokenProvider
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+Sample page to load a simple asset like an image!
+
+<img src="@($"{configuration["baseImageUrl"]}?{tokenProvider.NewToken()}")" />
+
+

@@ -15,7 +15,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "SpectoLogic.Azure.CDN.Sample": {
+    "VerizonDigital.CDN.TokenProvider.Sample": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
